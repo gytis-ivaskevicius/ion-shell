@@ -63,6 +63,8 @@ write to disk, which might not be worth it given the nowadays cheap hardware spa
 
 **(Currently ignored)**
 
+**(Currently ignored)**
+
 ### HISTORY_IGNORE
 
 Which commands should **NOT** be saved in the history.
@@ -156,6 +158,8 @@ The maximum number of lines contained in the command history in-memory.
 The maximum number of lines kept in the history file when flushed from memory.
 
 Ideally, this value should be the same as `HISTFILE_SIZE` (see `HISTFILE_SIZE` for details).
+
+**(Currently ignored)**
 
 **(Currently ignored)**
 
