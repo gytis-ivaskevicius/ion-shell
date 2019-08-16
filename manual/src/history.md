@@ -32,6 +32,10 @@ The REPL provides the following useful shortcuts for history searching:
 
 The following local variables can be used to modify Ion's history behavior:
 
+### HISTORY_SIZE
+
+The maximum number of lines contained in the history file.  **FIXME**
+
 ### HISTFILE
 
 The file into which the history should be saved. At Ion' startup, the history will be read
@@ -61,7 +65,7 @@ write to disk, which might not be worth it given the nowadays cheap hardware spa
 
 ### HISTORY_IGNORE
 
-Which commands should *not* be saved in the history.
+Which commands should **NOT** be saved in the history.
 
 **Default value:** `[ no_such_command whitespace duplicates ]`
 
@@ -130,11 +134,26 @@ I like to add `regex:#ignore$` to my `HISTORY_IGNORE`.
 That way, whenever I want to ignore a command on the fly, I just need to add `#ignore` to the
 end of the line.
 
-### HISTORY_SIZE
+### HISTFILE_ENABLED
+
+Whether the history should be read from/written into the file specified by `HISTFILE`.
+
+A value of **1** means yes, everything else means no.
+
+**Default value:** `1`
+
+### HISTFILE
+
+The file into which the history should be saved. At Ion' startup, the history will be read
+from this file, and when it exits, the session's history will be appended to this file.
 
 The maximum number of lines contained in the command history in-memory.
 
 **Default value:** `1000`
+
+### HISTFILE_SIZE
+
+The maximum number of lines contained in the history file. **FIXME**
 
 Ideally, this value should be the same as `HISTFILE_SIZE` (see `HISTFILE_SIZE` for details).
 
