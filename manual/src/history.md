@@ -34,7 +34,7 @@ The following local variables can be used to modify Ion's history behavior:
 
 ### HISTORY_SIZE
 
-The maximum number of lines contained in the history file.  **FIXME**
+The maximum number of lines contained in the command history in-memory.
 
 ### HISTFILE
 
@@ -153,7 +153,7 @@ The maximum number of lines contained in the command history in-memory.
 
 ### HISTFILE_SIZE
 
-The maximum number of lines contained in the history file. **FIXME**
+The maximum number of lines kept in the history file when flushed from memory.
 
 Ideally, this value should be the same as `HISTFILE_SIZE` (see `HISTFILE_SIZE` for details).
 
