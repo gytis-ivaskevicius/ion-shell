@@ -66,20 +66,18 @@ Which commands should *not* be saved in the history.
 **Default value:** `[ no_such_command whitespace duplicates ]`
 
 Each element of the array can take one of the following options:
-- `all` <br/>
+- **all** <br/>
   All commands are ignored, nothing will be saved in the history.
-- `no_such_command` <br/>
+- **no_such_command** <br/>
   Commands which return `NO_SUCH_COMMAND` will not be saved in the history.
-- `whitespace` <br/>
+- **whitespace** <br/>
   Commands which start with a [whitespace character](https://doc.rust-lang.org/stable/reference/whitespace.html) will not be saved in the
   history.
-- `regex:xxx`  <br/>
+- **regex:xxx**  <br/>
   Where xxx is treated as a [regular expression](https://doc.rust-lang.org/regex/regex/index.html).
   Commands which match this regular expression will not be saved in the history.
-- `duplicates`  <br/>
+- **duplicates**  <br/>
   All preceding duplicate commands are removed/ignored from the history after a matching command is entered.
-
-Specifying an empty array, means that all commands will be saved.
 
 **Notes**
 - You can specify as many elements as you want.
