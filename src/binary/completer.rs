@@ -1,8 +1,20 @@
 use auto_enums::auto_enum;
 use glob::{glob_with, MatchOptions};
 use ion_shell::{expansion::Expander, Shell};
+use itertools::Itertools;
 use liner::{Completer, CursorPosition, Event, EventKind};
-use std::{env, iter, path::PathBuf, str};
+use shellac::{
+    codec::{read_reply, write_request, AutocompRequest},
+    Error,
+};
+use std::{
+    env,
+    io::BufReader,
+    iter,
+    path::PathBuf,
+    process::{Command, Stdio},
+    str,
+};
 
 pub struct IonCompleter<'a, 'b> {
     shell:      &'b Shell<'a>,
@@ -53,7 +65,7 @@ fn escape(input: &str) -> String {
 enum CompletionType {
     Nothing,
     Command,
-    VariableAndFiles,
+    VariableAndFiles(AutocompRequest),
 }
 
 impl<'a, 'b> IonCompleter<'a, 'b> {
@@ -64,19 +76,16 @@ impl<'a, 'b> IonCompleter<'a, 'b> {
 
 impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
     fn completions(&mut self, start: &str) -> Vec<String> {
-        let mut completions = IonFileCompleter::new(None, &self.shell).completions(start);
+        let mut completions = Vec::with_capacity(20);
         let vars = self.shell.variables();
 
-        match self.completion {
-            CompletionType::VariableAndFiles => {
+        match &self.completion {
+            CompletionType::VariableAndFiles(request) => {
                 // Initialize a new completer from the definitions collected.
                 // Creates a list of definitions from the shell environment that
                 // will be used
                 // in the creation of a custom completer.
-                if start.is_empty() {
-                    completions.extend(vars.string_vars().map(|(s, _)| format!("${}", s)));
-                    completions.extend(vars.arrays().map(|(s, _)| format!("@{}", s)));
-                } else if start.starts_with('$') {
+                if start.starts_with('$') {
                     completions.extend(
                         // Add the list of available variables to the completer's
                         // definitions. TODO: We should make
@@ -92,6 +101,35 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                             .filter(|(s, _)| s.starts_with(&start[1..]))
                             .map(|(s, _)| format!("@{}", &s)),
                     );
+                } else {
+                    let mut cmd =
+                        Command::new("/home/adminxvii/dev/shellac-server/target/debug/shellac");
+                    cmd.current_dir("/home/adminxvii/dev/shellac-server");
+                    let child = cmd
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::null())
+                        .spawn()
+                        .expect("Failed to spawn child process");
+
+                    {
+                        let mut stdin = child.stdin.expect("Failed to open stdin");
+                        write_request(&mut stdin, request);
+                    }
+
+                    let output = read_reply(
+                        &mut BufReader::new(child.stdout.unwrap()),
+                        |suggestions| -> Result<_, Error> {
+                            suggestions
+                                .map(|s| s.map(|(s, _)| format!("{}{}", start, s)))
+                                .collect::<Result<Vec<_>, _>>()
+                        },
+                    );
+                    if let Ok(output) = output {
+                        completions.extend(output)
+                    }
+                    // TODO: This is really dirty and only works for completely typed command. Fix
+                    // this
                 }
             }
             CompletionType::Command => {
@@ -99,6 +137,7 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                 // Creates a list of definitions from the shell environment that
                 // will be used
                 // in the creation of a custom completer.
+                completions.extend(IonFileCompleter::new(None, &self.shell).completions(start));
                 completions.extend(
                     self.shell
                         .builtins()
@@ -134,7 +173,9 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                 // Merge the collected definitions with the file path definitions.
                 completions.extend(MultiCompleter::new(file_completers).completions(start));
             }
-            CompletionType::Nothing => (),
+            CompletionType::Nothing => {
+                completions.extend(IonFileCompleter::new(None, &self.shell).completions(start))
+            }
         }
 
         completions
@@ -143,31 +184,57 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
     fn on_event<W: std::io::Write>(&mut self, event: Event<'_, '_, W>) {
         if let EventKind::BeforeComplete = event.kind {
             let (words, pos) = event.editor.get_words_and_cursor_position();
+            let variables = |index, append| {
+                // Find the incomplete statement
+                // TODO: proper expansion
+                let initial_len = words.len();
+                let buffer = event.editor.current_buffer();
+                let mut words = words
+                    .iter()
+                    .rev()
+                    .map(|&(start, end)| buffer.range(start, end))
+                    .take_while(|word| {
+                        !word.ends_with('|') && !word.ends_with('&') && !word.ends_with(';')
+                    })
+                    .collect::<Vec<_>>();
+                words.reverse();
+                if append {
+                    words.push(String::new());
+                }
+
+                let len_diff = initial_len + if append { 1 } else { 0 } - words.len();
+                AutocompRequest { argv: words, word: (index - len_diff) as u16 }
+            };
+
             self.completion = match pos {
                 _ if words.is_empty() => CompletionType::Nothing,
-                CursorPosition::InWord(0) => CompletionType::Command,
+                CursorPosition::InWord(0)
+                | CursorPosition::OnWordRightEdge(0)
+                | CursorPosition::InSpace(None, _) => CompletionType::Command,
                 CursorPosition::OnWordRightEdge(index) => {
-                    if index == 0 {
+                    let is_pipe = words
+                        .iter()
+                        .nth(index - 1)
+                        .map(|&(start, end)| event.editor.current_buffer().range(start, end))
+                        .map_or(false, |filename| {
+                            filename.ends_with('|')
+                                || filename.ends_with('&')
+                                || filename.ends_with(';')
+                        });
+                    if is_pipe {
                         CompletionType::Command
                     } else {
-                        let is_pipe = words
-                            .into_iter()
-                            .nth(index - 1)
-                            .map(|(start, end)| event.editor.current_buffer().range(start, end))
-                            .filter(|filename| {
-                                filename.ends_with('|')
-                                    || filename.ends_with('&')
-                                    || filename.ends_with(';')
-                            })
-                            .is_some();
-                        if is_pipe {
-                            CompletionType::Command
-                        } else {
-                            CompletionType::VariableAndFiles
-                        }
+                        CompletionType::VariableAndFiles(variables(index, false))
                     }
                 }
-                _ => CompletionType::VariableAndFiles,
+                CursorPosition::InWord(index)
+                | CursorPosition::OnWordLeftEdge(index)
+                | CursorPosition::InSpace(_, Some(index)) => {
+                    CompletionType::VariableAndFiles(variables(index, false))
+                }
+                CursorPosition::InSpace(Some(index), None) => {
+                    CompletionType::VariableAndFiles(variables(index + 1, true))
+                }
             };
         }
     }

@@ -79,7 +79,7 @@ permutate = "0.3"
 xdg = "2.2"
 nix = "0.20"
 mktemp = "0.4"
-
+shellac-server = "0.2"
 
 # window example
 piston-ai_behavior = { version = "0.31", optional = true }
