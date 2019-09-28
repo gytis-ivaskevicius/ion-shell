@@ -1,12 +1,8 @@
 use auto_enums::auto_enum;
 use glob::{glob_with, MatchOptions};
 use ion_shell::{expansion::Expander, Shell};
-use itertools::Itertools;
 use liner::{Completer, CursorPosition, Event, EventKind};
-use shellac::{
-    codec::{read_reply, write_request, AutocompRequest},
-    Error,
-};
+use shellac::{read_reply, write_request, AutocompRequest, Error, SuggestionType};
 use std::{
     env,
     io::BufReader,
@@ -120,9 +116,34 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                     let output = read_reply(
                         &mut BufReader::new(child.stdout.unwrap()),
                         |suggestions| -> Result<_, Error> {
-                            suggestions
-                                .map(|s| s.map(|(s, _)| format!("{}{}", start, s)))
-                                .collect::<Result<Vec<_>, _>>()
+                            let mut results = Vec::with_capacity(20);
+                            for s in suggestions {
+                                let (suggestion, _description) = s?;
+                                match suggestion {
+                                    SuggestionType::Literal(lit) => {
+                                        results.push(format!("{}{}", start, lit))
+                                    }
+                                    SuggestionType::Command { prefix, command } => {
+                                        if let Some(out) = Command::new(command[0])
+                                            .args(&command[1..])
+                                            .output()
+                                            .ok()
+                                            .and_then(|out| String::from_utf8(out.stdout).ok())
+                                        {
+                                            for line in out.split('\n') {
+                                                if line.starts_with(prefix) {
+                                                    results.push(format!(
+                                                        "{}{}",
+                                                        start,
+                                                        &out[prefix.len() - 1..]
+                                                    ));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Ok(results)
                         },
                     );
                     if let Ok(output) = output {
@@ -203,7 +224,7 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                 }
 
                 let len_diff = initial_len + if append { 1 } else { 0 } - words.len();
-                AutocompRequest { argv: words, word: (index - len_diff) as u16 }
+                AutocompRequest::new(words, (index - len_diff) as u16)
             };
 
             self.completion = match pos {
