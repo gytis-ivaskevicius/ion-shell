@@ -135,7 +135,7 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                                                     results.push(format!(
                                                         "{}{}",
                                                         start,
-                                                        &out[prefix.len() - 1..]
+                                                        &out[prefix.len()..]
                                                     ));
                                                 }
                                             }
