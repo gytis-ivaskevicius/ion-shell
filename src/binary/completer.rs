@@ -98,9 +98,7 @@ impl<'a, 'b> Completer for IonCompleter<'a, 'b> {
                             .map(|(s, _)| format!("@{}", &s)),
                     );
                 } else {
-                    let mut cmd =
-                        Command::new("/home/adminxvii/dev/shellac-server/target/debug/shellac");
-                    cmd.current_dir("/home/adminxvii/dev/shellac-server");
+                    let mut cmd = Command::new("shellac-server");
                     let child = cmd
                         .stdin(Stdio::piped())
                         .stdout(Stdio::piped())
