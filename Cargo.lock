@@ -19,12 +19,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
 
 [[package]]
-name = "ahash"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
-
-[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -943,15 +937,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1de41fb8dba9714efd92241565cdff73f78508c95697dd56787d3cba27e2353"
 
 [[package]]
-name = "hashbrown"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-dependencies = [
- "ahash",
-]
-
-[[package]]
 name = "heck"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1041,7 +1026,7 @@ dependencies = [
  "scopes",
  "serial_test",
  "serial_test_derive",
- "shellac-server 0.2.0",
+ "shellac-server",
  "small",
  "smallvec",
  "thiserror",
@@ -1224,16 +1209,7 @@ version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d8f669d42c72d18514dfca8115689c5f6370a17d980cb5bd777a67f404594c8"
 dependencies = [
- "hashbrown 0.5.0",
-]
-
-[[package]]
-name = "lru"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f374d42cdfc1d7dbf3d3dec28afab2eb97ffbf43a3234d795b5986dbf4b90ba"
-dependencies = [
- "hashbrown 0.9.1",
+ "hashbrown",
 ]
 
 [[package]]
@@ -2290,15 +2266,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shellac-codec"
-version = "0.2.0"
-dependencies = [
- "capnp",
- "capnpc",
- "serde",
-]
-
-[[package]]
 name = "shellac-server"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2308,24 +2275,10 @@ dependencies = [
  "capnpc",
  "combine",
  "itertools 0.8.2",
- "lru 0.1.17",
+ "lru",
  "regex",
  "serde",
  "serde_yaml",
- "structopt",
-]
-
-[[package]]
-name = "shellac-server"
-version = "0.3.1"
-dependencies = [
- "combine",
- "itertools 0.8.2",
- "lru 0.6.5",
- "regex",
- "serde",
- "serde_yaml",
- "shellac-codec",
  "structopt",
 ]
 
