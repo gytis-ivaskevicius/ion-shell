@@ -1,43 +1,59 @@
 {
   inputs = {
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-unstable-small;
     # Fancy '$ nix develop'
-    devshell.url = "github:numtide/devshell";
+    devshell.url = github:numtide/devshell;
 
     # Few utils to iterate over supported systems.
-    utils.url = "github:numtide/flake-utils";
+    utils.url = github:numtide/flake-utils;
+
+    shellac-server.url = github:gytis-ivaskevicius/shellac-server;
+    #shellac-server.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, utils, devshell }:
+  outputs = { self, nixpkgs, utils, devshell, shellac-server }:
     utils.lib.eachDefaultSystem (system:
       let
+        shellac = shellac-server.defaultPackage.${system};
+
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ devshell.overlay ];
         };
-      in
-      rec {
 
-        defaultPackage = pkgs.rustPlatform.buildRustPackage rec {
-          name = "ion-shell";
-          src = ./.;
-          nativeBuildInputs = with pkgs;[ capnproto ];
-          # I was not able to figure out how to pull dependencies form git using naersk, thus I droped in the good old fashion cargoSha256
-          cargoSha256 = "sha256-S9D0Z5EQWpI+JJ+rgMLTGk+m8W9C0q//fCHmxMvMI2E=";
-        };
+        mkIonExecScript = {shellacPath, shellacCompletionsPath, ionPath}: ''
+          export PATH=$PATH:${shellacPath}:${ionPath}
+          export SHELLAC_COMPLETIONS_DIR=${shellacCompletionsPath}
+          ion
+        '';
+      in rec {
 
-        apps = {
+        defaultPackage = packages.ion;
 
-          # Assumes ../shellac-server exists and is built using debug profile
-          ion-shellac-debug = pkgs.writeShellScriptBin "ion-shellac-dev" ''
-            export PATH=$PATH:../shellac-server/target/debug/
-            ${defaultPackage}/bin/ion
-          '';
+        packages = rec {
 
-          # Assumes ../shellac-server exists and is built using release profile
-          ion-shellac-release = pkgs.writeShellScriptBin "ion-shellac-dev" ''
-            export PATH=$PATH:../shellac-server/target/release/
-            ${defaultPackage}/bin/ion
-          '';
+          # Assumes ../shellac-server exists and it and ion is built using debug profile
+          ion-shellac-local = pkgs.writeShellScriptBin "ion-shellac-local" (mkIonExecScript {
+            ionPath = "$DEVSHELL_ROOT/target/debug";
+            shellacPath = "$DEVSHELL_ROOT/../shellac-server/target/debug/";
+            shellacCompletionsPath = "$DEVSHELL_ROOT/../shellac-server/completion";
+          });
+
+          # Builds ion/shellac
+          ion-shellac = pkgs.writeShellScriptBin "ion-shellac" (mkIonExecScript {
+            ionPath = ion + "/bin";
+            shellacPath = shellac  + "/bin";
+            shellacCompletionsPath = shellac + "/completion";
+          });
+
+          # Standalone ion shell
+          ion = pkgs.rustPlatform.buildRustPackage rec {
+            name = "ion-shell";
+            src = ./.;
+            nativeBuildInputs = with pkgs;[ capnproto ];
+            # I was not able to figure out how to pull dependencies form git using naersk, thus I droped in the good old fashion cargoSha256
+            cargoSha256 = "sha256-S9D0Z5EQWpI+JJ+rgMLTGk+m8W9C0q//fCHmxMvMI2E=";
+          };
 
         };
 
@@ -45,7 +61,7 @@
 
         # nix develop
         devShell = pkgs.devshell.mkShell {
-          name = "shellac-server";
+          name = "ion-shell";
 
           # Custom scripts. Also easy to use them in CI/CD
           commands = [
@@ -54,9 +70,14 @@
               help = "Check Nix formatting";
               command = "nixpkgs-fmt \${@} $DEVSHELL_ROOT";
             }
+            {
+              name = "run-ion";
+              help = "Executes debug version of ion shell with shellac";
+              command = packages.ion-shellac-local + "/bin/ion-shellac-local";
+            }
           ];
 
-          packages = with pkgs;[ nixpkgs-fmt rustc cargo stdenv.cc ];
+          packages = with pkgs;[ nixpkgs-fmt capnproto rustc cargo stdenv.cc ];
         };
       });
 }
