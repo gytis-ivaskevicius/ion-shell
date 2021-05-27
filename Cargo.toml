@@ -111,6 +111,3 @@ panic = "abort"
 termion = { git = "https://gitlab.redox-os.org/redox-os/termion" }
 redox_liner = { git = "https://gitlab.redox-os.org/redox-os/liner" }
 
-[package.metadata.nix]
-app = true
-build = true

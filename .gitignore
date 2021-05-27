@@ -1,3 +1,4 @@
+result
 !.travis
 cachegrind.*
 perf.*
